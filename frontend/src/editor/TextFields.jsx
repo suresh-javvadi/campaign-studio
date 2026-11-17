@@ -1,6 +1,8 @@
 import { FONT_OPTIONS } from './fonts.js'
 import { IconAlignLeft, IconAlignCenter, IconAlignRight } from '../components/icons.jsx'
 import ToggleButton from './ToggleButton.jsx'
+import NumberField from './NumberField.jsx'
+import ColorField from './ColorField.jsx'
 
 const ALIGN_OPTIONS = [
   { value: 'left', icon: IconAlignLeft, label: 'Align left' },
@@ -45,30 +47,18 @@ function TextFields({ selection, onChange }) {
       </div>
 
       <div className="flex gap-3">
-        <div className="flex flex-1 flex-col gap-1.5">
-          <label className="text-xs font-medium text-ink-secondary">
-            Font size
-          </label>
-          <input
-            type="number"
-            min={8}
-            max={400}
-            value={fontSize}
-            onChange={(event) => onChange({ fontSize: Number(event.target.value) })}
-            className="h-10 px-3 bg-surface-sunken border border-ink/8 rounded-sm text-sm text-ink outline-none focus:border-ink/14 tabular-nums"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-ink-secondary">
-            Colour
-          </label>
-          <input
-            type="color"
-            value={fill}
-            onChange={(event) => onChange({ fill: event.target.value })}
-            className="h-10 w-12 bg-surface-sunken border border-ink/8 rounded-sm cursor-pointer"
-          />
-        </div>
+        <NumberField
+          label="Font size"
+          value={fontSize}
+          min={8}
+          max={400}
+          onChange={(value) => onChange({ fontSize: value })}
+        />
+        <ColorField
+          label="Colour"
+          value={fill}
+          onChange={(value) => onChange({ fill: value })}
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">

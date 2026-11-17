@@ -1,4 +1,5 @@
 import { FabricImage } from 'fabric'
+import { uploadImageFile } from '../api/uploads.js'
 
 export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
@@ -7,19 +8,15 @@ export function isAcceptedImageFile(file) {
 }
 
 /**
- * Loads a File into a Fabric image object, scaled uniformly to fit inside the
- * canvas (never upscaled, never stretched) and centered. The original pixel
- * data is preserved — only scaleX/scaleY change.
+ * Uploads a File to the backend's persistent storage, then loads it into a
+ * Fabric image object scaled uniformly to fit inside the canvas (never
+ * upscaled, never stretched) and centered. Because the image is loaded from
+ * a persistent URL (not a blob: URL), it — and its position/size/rotation —
+ * survive a save and a later reload.
  */
 export async function createImageObject(file, canvasWidth, canvasHeight) {
-  const objectUrl = URL.createObjectURL(file)
-
-  let image
-  try {
-    image = await FabricImage.fromURL(objectUrl)
-  } finally {
-    URL.revokeObjectURL(objectUrl)
-  }
+  const url = await uploadImageFile(file)
+  const image = await FabricImage.fromURL(url, { crossOrigin: 'anonymous' })
 
   const fitScale = Math.min(
     1,
