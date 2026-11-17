@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+
+  /* surfaces — one white, borders do the separating */
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f5f6f8;
+
+  /* text / neutral ink scale */
+  --color-ink: #15171e;
+  --color-ink-secondary: #5b6270;
+  --color-ink-tertiary: #8a8f99;
+  --color-ink-disabled: #c7cad0;
+
+  /* the one accent */
+  --color-accent: #e8572a;
+  --color-accent-hover: #d14a20;
+
+  /* semantic, used sparingly */
+  --color-success: #2f9e62;
+  --color-warning: #c98a1f;
+  --color-danger: #d1453b;
+
+  /* radius scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  button {
+    font-family: inherit;
+  }
+
+  dialog::backdrop {
+    background: rgba(21, 23, 30, 0.35);
+  }
+}
