@@ -3,6 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const projectsRouter = require('./routes/projects');
+const uploadsRouter = require('./routes/uploads');
+const { UPLOADS_DIR } = require('./storage');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +20,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/api/uploads', uploadsRouter);
 app.use('/api/projects', projectsRouter);
 
 // eslint-disable-next-line no-unused-vars -- Express requires the 4-arg signature to detect error middleware

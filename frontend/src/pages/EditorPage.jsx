@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { Rect } from 'fabric'
 import Button from '../components/Button.jsx'
 import { IconArrowLeft } from '../components/icons.jsx'
 import FabricCanvas from '../editor/FabricCanvas.jsx'
@@ -18,6 +19,17 @@ import {
   isImageObject,
   readImageSnapshot,
 } from '../editor/imageObject.js'
+import {
+  applyShapeSnapshotPatch,
+  createShapeObject,
+  isShapeObject,
+  readShapeSnapshot,
+} from '../editor/shapeObject.js'
+import {
+  DEFAULT_BACKGROUND,
+  applyBackground,
+  readBackgroundSnapshot,
+} from '../editor/backgroundObject.js'
 import { getProject, updateProject } from '../api/projects.js'
 
 const AUTOSAVE_DELAY_MS = 1500
@@ -25,11 +37,14 @@ const AUTOSAVE_DELAY_MS = 1500
 function snapshotOf(object) {
   if (isTextObject(object)) return readTextSnapshot(object)
   if (isImageObject(object)) return readImageSnapshot(object)
+  if (isShapeObject(object)) return readShapeSnapshot(object)
   return null
 }
 
 function hasSavedContent(canvasData) {
-  return Boolean(canvasData) && Array.isArray(canvasData.objects) && canvasData.objects.length > 0
+  if (!canvasData) return false
+  const hasObjects = Array.isArray(canvasData.objects) && canvasData.objects.length > 0
+  return hasObjects || Boolean(canvasData.background)
 }
 
 function EditorPage({ projectId }) {
@@ -40,6 +55,8 @@ function EditorPage({ projectId }) {
   const [saveStatus, setSaveStatus] = useState(null)
   const [selection, setSelection] = useState(null)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [assetWarning, setAssetWarning] = useState(null)
+  const [background, setBackground] = useState(DEFAULT_BACKGROUND)
 
   const canvasRef = useRef(null)
   const isRestoringRef = useRef(false)
@@ -126,10 +143,43 @@ function EditorPage({ projectId }) {
 
       if (hasSavedContent(project?.canvasData)) {
         isRestoringRef.current = true
-        canvas.loadFromJSON(project.canvasData).then(() => {
+        let missingImageCount = 0
+
+        // If an image's file is missing (deleted on disk, etc.), Fabric
+        // skips it by default — this reviver instead swaps in a dashed
+        // placeholder at the same position/size/rotation, so the gap is
+        // visible and recoverable rather than silently vanishing.
+        const reviver = (serialized, _object, error) => {
+          if (!error || serialized.type !== 'Image') return undefined
+          missingImageCount += 1
+          return new Rect({
+            left: serialized.left,
+            top: serialized.top,
+            width: serialized.width,
+            height: serialized.height,
+            scaleX: serialized.scaleX ?? 1,
+            scaleY: serialized.scaleY ?? 1,
+            angle: serialized.angle ?? 0,
+            fill: 'rgba(138, 143, 153, 0.08)',
+            stroke: 'rgba(21, 23, 30, 0.14)',
+            strokeDashArray: [6, 4],
+          })
+        }
+
+        canvas.loadFromJSON(project.canvasData, reviver).then(() => {
           canvas.requestRenderAll()
           isRestoringRef.current = false
+          setBackground(readBackgroundSnapshot(canvas))
+          if (missingImageCount > 0) {
+            setAssetWarning(
+              `${missingImageCount} image${missingImageCount > 1 ? 's' : ''} couldn't be loaded and ${
+                missingImageCount > 1 ? 'were' : 'was'
+              } replaced with a placeholder.`,
+            )
+          }
         })
+      } else {
+        setBackground(readBackgroundSnapshot(canvas))
       }
     },
     [syncSelectionFromCanvas, scheduleAutosave, project],
@@ -188,23 +238,42 @@ function EditorPage({ projectId }) {
     syncSelectionFromCanvas()
   }
 
+  const handleAddShape = (shapeType) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const shape = createShapeObject(shapeType, width, height)
+    canvas.add(shape)
+    canvas.setActiveObject(shape)
+    canvas.requestRenderAll()
+    syncSelectionFromCanvas()
+  }
+
   const handleUploadFiles = async (fileList) => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const files = Array.from(fileList).filter(isAcceptedImageFile)
     let lastImage = null
+    const failures = []
 
     for (const file of files) {
-      const image = await createImageObject(file, width, height)
-      canvas.add(image)
-      lastImage = image
+      try {
+        const image = await createImageObject(file, width, height)
+        canvas.add(image)
+        lastImage = image
+      } catch {
+        failures.push(file.name)
+      }
     }
 
     if (lastImage) {
       canvas.setActiveObject(lastImage)
       canvas.requestRenderAll()
       syncSelectionFromCanvas()
+    }
+
+    if (failures.length > 0) {
+      setAssetWarning(`Couldn't upload ${failures.join(', ')}. Please try again.`)
     }
   }
 
@@ -233,12 +302,23 @@ function EditorPage({ projectId }) {
       applySnapshotPatch(active, patch)
     } else if (isImageObject(active)) {
       applyImageSnapshotPatch(active, patch)
+    } else if (isShapeObject(active)) {
+      applyShapeSnapshotPatch(active, patch)
     } else {
       return
     }
 
     canvas.requestRenderAll()
     setSelection(snapshotOf(active))
+    scheduleAutosave()
+  }
+
+  const handleBackgroundChange = (patch) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const next = { ...background, ...patch }
+    setBackground(next)
+    applyBackground(canvas, next)
     scheduleAutosave()
   }
 
@@ -287,11 +367,25 @@ function EditorPage({ projectId }) {
       <Toolbar
         onAddText={handleAddText}
         onUploadFiles={handleUploadFiles}
+        onAddShape={handleAddShape}
         onDelete={handleDelete}
         hasSelection={Boolean(selection)}
         onSave={handleManualSave}
         saveStatus={saveStatus}
       />
+
+      {assetWarning && (
+        <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-2 bg-warning/10 border-b border-ink/8 text-xs text-ink">
+          <span>{assetWarning}</span>
+          <button
+            type="button"
+            onClick={() => setAssetWarning(null)}
+            className="shrink-0 text-ink-tertiary hover:text-ink transition-colors duration-150"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
         <div
@@ -313,6 +407,8 @@ function EditorPage({ projectId }) {
           onChange={handlePropertyChange}
           onBringForward={handleBringForward}
           onSendBackward={handleSendBackward}
+          background={background}
+          onBackgroundChange={handleBackgroundChange}
         />
       </div>
     </div>

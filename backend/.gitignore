@@ -3,6 +3,9 @@ node_modules
 *.log
 npm-debug.log*
 
+# Uploaded files (local dev storage) — not source controlled
+uploads/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

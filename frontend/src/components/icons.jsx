@@ -201,3 +201,35 @@ export function IconAlignRight(props) {
     </svg>
   )
 }
+
+export function IconRectangle(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3.5" y="5.5" width="17" height="13" rx="1.75" />
+    </svg>
+  )
+}
+
+export function IconCircleShape(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+    </svg>
+  )
+}
+
+export function IconLineShape(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 19 19 5" />
+    </svg>
+  )
+}
+
+export function IconTriangleShape(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 4.5 20.5 19.5h-17z" />
+    </svg>
+  )
+}

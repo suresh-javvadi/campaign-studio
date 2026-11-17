@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import Button from '../components/Button.jsx'
 import { IconPlus, IconFrame, IconTrash } from '../components/icons.jsx'
+import { SHAPE_TOOLS } from './shapeObject.js'
 
 const SAVE_STATUS_LABEL = {
   saving: 'Saving…',
@@ -8,7 +9,19 @@ const SAVE_STATUS_LABEL = {
   error: 'Save failed',
 }
 
-function Toolbar({ onAddText, onUploadFiles, onDelete, hasSelection, onSave, saveStatus }) {
+function Divider() {
+  return <span className="w-px h-6 bg-ink/10 mx-1 shrink-0" aria-hidden="true" />
+}
+
+function Toolbar({
+  onAddText,
+  onUploadFiles,
+  onAddShape,
+  onDelete,
+  hasSelection,
+  onSave,
+  saveStatus,
+}) {
   const fileInputRef = useRef(null)
 
   const handleFileChange = (event) => {
@@ -17,7 +30,7 @@ function Toolbar({ onAddText, onUploadFiles, onDelete, hasSelection, onSave, sav
   }
 
   return (
-    <div className="h-14 shrink-0 flex items-center gap-2 px-4 md:px-6 border-b border-ink/8 bg-surface">
+    <div className="h-14 shrink-0 flex items-center gap-2 px-4 md:px-6 border-b border-ink/8 bg-surface overflow-x-auto">
       <Button variant="outline" onClick={onAddText}>
         <IconPlus className="w-4 h-4" />
         Add Text
@@ -36,17 +49,34 @@ function Toolbar({ onAddText, onUploadFiles, onDelete, hasSelection, onSave, sav
         onChange={handleFileChange}
       />
 
+      <Divider />
+
+      <span className="text-xs text-ink-tertiary shrink-0">Shapes</span>
+      {SHAPE_TOOLS.map(({ type, label, icon: Icon }) => (
+        <button
+          key={type}
+          type="button"
+          onClick={() => onAddShape(type)}
+          aria-label={`Add ${label}`}
+          className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-sm text-ink-secondary transition-colors duration-150 hover:bg-surface-sunken"
+        >
+          <Icon className="w-4 h-4" />
+        </button>
+      ))}
+
+      <Divider />
+
       <button
         type="button"
         onClick={onDelete}
         disabled={!hasSelection}
         aria-label="Delete selected object"
-        className="inline-flex items-center justify-center w-9 h-9 rounded-sm text-ink-secondary transition-colors duration-150 hover:bg-surface-sunken disabled:opacity-40 disabled:pointer-events-none"
+        className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-sm text-ink-secondary transition-colors duration-150 hover:bg-surface-sunken disabled:opacity-40 disabled:pointer-events-none"
       >
         <IconTrash className="w-4 h-4" />
       </button>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-3 shrink-0 pl-2">
         {saveStatus && (
           <span
             className={`text-xs tabular-nums ${
