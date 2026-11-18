@@ -1,5 +1,7 @@
+import { useId, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IconTrash } from './icons.jsx'
+import { updateProject } from '../api/projects.js'
 
 function formatRelativeTime(dateString) {
   const diffMs = Date.now() - new Date(dateString).getTime()
@@ -13,42 +15,96 @@ function formatRelativeTime(dateString) {
   return new Date(dateString).toLocaleDateString()
 }
 
-function ProjectCard({ project, onDelete }) {
+function ProjectCard({ project, onDelete, onRenamed }) {
   const navigate = useNavigate()
+  const nameInputId = useId()
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [name, setName] = useState(project.name)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const editorPath = project.templateId ? `/personalize/${project.id}` : `/editor/${project.id}`
+  const openProject = () => navigate(editorPath)
+
+  const handleRenameSubmit = async (event) => {
+    event.preventDefault()
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === project.name) {
+      setIsRenaming(false)
+      setName(project.name)
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const updated = await updateProject(project.id, { name: trimmed })
+      onRenamed?.(updated)
+      setIsRenaming(false)
+    } catch {
+      setName(project.name)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <div className="group border border-ink/8 rounded-md bg-surface overflow-hidden flex flex-col transition-[border-color,box-shadow,transform] duration-150 hover:border-ink/14 hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_6px_16px_-4px_rgba(0,0,0,0.08)]">
       <button
         type="button"
-        onClick={() => navigate(`/editor/${project.id}`)}
+        onClick={openProject}
         aria-label={`Open ${project.name}`}
-        className="aspect-[4/3] flex items-center justify-center bg-surface-sunken border-b border-ink/8 text-ink-disabled cursor-pointer"
+        className="aspect-[4/3] flex items-center justify-center bg-surface-sunken border-b border-ink/8 text-ink-disabled cursor-pointer overflow-hidden"
       >
-        <span className="text-xs tabular-nums">
-          {project.width} × {project.height}
-        </span>
+        {project.thumbnailUrl ? (
+          <img src={project.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-xs tabular-nums">
+            {project.width} × {project.height}
+          </span>
+        )}
       </button>
       <div className="px-3 py-2.5 flex items-start justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => navigate(`/editor/${project.id}`)}
-          className="min-w-0 text-left cursor-pointer"
-        >
-          <p className="m-0 text-[13px] font-semibold text-ink truncate">
-            {project.name}
-          </p>
-          <p className="m-0.5 mt-0.5 text-xs text-ink-tertiary">
-            Updated {formatRelativeTime(project.updatedAt)}
-          </p>
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(project)}
-          aria-label={`Delete ${project.name}`}
-          className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-sm text-ink-tertiary transition-colors duration-150 hover:bg-surface-sunken hover:text-danger"
-        >
-          <IconTrash className="w-4 h-4" />
-        </button>
+        {isRenaming ? (
+          <form onSubmit={handleRenameSubmit} className="min-w-0 flex-1">
+            <label htmlFor={nameInputId} className="sr-only">
+              Project name
+            </label>
+            <input
+              id={nameInputId}
+              type="text"
+              autoFocus
+              value={name}
+              disabled={isSaving}
+              onChange={(event) => setName(event.target.value)}
+              onBlur={handleRenameSubmit}
+              className="w-full h-7 px-1.5 -mx-1.5 text-[13px] font-semibold text-ink bg-surface-sunken border border-ink/14 rounded-sm outline-none"
+            />
+          </form>
+        ) : (
+          <button type="button" onClick={openProject} className="min-w-0 text-left cursor-pointer">
+            <p className="m-0 text-[13px] font-semibold text-ink truncate">{project.name}</p>
+            <p className="m-0.5 mt-0.5 text-xs text-ink-tertiary">
+              Updated {formatRelativeTime(project.updatedAt)}
+            </p>
+          </button>
+        )}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsRenaming(true)}
+            aria-label={`Rename ${project.name}`}
+            className="hidden group-hover:inline-flex items-center justify-center w-7 h-7 rounded-sm text-ink-tertiary transition-colors duration-150 hover:bg-surface-sunken hover:text-ink"
+          >
+            <span className="text-xs font-semibold">Aa</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(project)}
+            aria-label={`Delete ${project.name}`}
+            className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-sm text-ink-tertiary transition-colors duration-150 hover:bg-surface-sunken hover:text-danger"
+          >
+            <IconTrash className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+import { API_BASE_URL } from './client.js'
 
 /**
  * Uploads a file to the backend's storage layer and returns the absolute
@@ -12,6 +12,7 @@ export async function uploadImageFile(file) {
 
   const response = await fetch(`${API_BASE_URL}/api/uploads`, {
     method: 'POST',
+    credentials: 'include',
     body: formData,
   })
 

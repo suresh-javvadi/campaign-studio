@@ -1,6 +1,6 @@
 import { IconSearch, IconBell, IconMenu } from './icons.jsx'
 
-function Topbar({ title, onMenuClick, notificationCount = 0, user }) {
+function Topbar({ title, onMenuClick, notificationCount = 0, user, onLogout }) {
   return (
     <header className="h-16 shrink-0 flex items-center justify-between gap-4 px-4 md:px-6 border-b border-ink/8 bg-surface sticky top-0 z-10">
       <div className="flex items-center gap-3 min-w-0">
@@ -55,6 +55,13 @@ function Topbar({ title, onMenuClick, notificationCount = 0, user }) {
           <span className="hidden md:inline text-[13px] font-medium text-ink whitespace-nowrap">
             {user.name}
           </span>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="text-xs font-medium text-ink-tertiary hover:text-ink transition-colors duration-150 bg-transparent border-none cursor-pointer"
+          >
+            Log out
+          </button>
         </div>
       </div>
     </header>

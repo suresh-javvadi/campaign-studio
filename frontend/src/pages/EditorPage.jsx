@@ -31,6 +31,7 @@ import {
   readBackgroundSnapshot,
 } from '../editor/backgroundObject.js'
 import { getProject, updateProject } from '../api/projects.js'
+import { generateThumbnail } from '../editor/thumbnail.js'
 
 const AUTOSAVE_DELAY_MS = 1500
 
@@ -94,7 +95,10 @@ function EditorPage({ projectId }) {
     setSaveStatus('saving')
     const canvasData = canvas.toJSON()
 
-    updateProject(project.id, { canvasData })
+    generateThumbnail(canvas)
+      .then((thumbnailUrl) =>
+        updateProject(project.id, thumbnailUrl ? { canvasData, thumbnailUrl } : { canvasData }),
+      )
       .then(() => setSaveStatus('saved'))
       .catch(() => setSaveStatus('error'))
       .finally(() => {
@@ -221,7 +225,7 @@ function EditorPage({ projectId }) {
           We couldn&apos;t load this design. It may have been deleted, or the
           backend isn&apos;t reachable.
         </p>
-        <Button onClick={() => navigate('/')}>Back to Dashboard</Button>
+        <Button onClick={() => navigate('/app/projects')}>Back to Dashboard</Button>
       </div>
     )
   }
@@ -350,7 +354,7 @@ function EditorPage({ projectId }) {
       <header className="h-16 shrink-0 flex items-center gap-3 px-4 md:px-6 border-b border-ink/8 bg-surface">
         <button
           type="button"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/app/projects')}
           aria-label="Back to dashboard"
           className="inline-flex items-center justify-center w-9 h-9 rounded-sm text-ink-secondary hover:bg-surface-sunken transition-colors duration-150"
         >

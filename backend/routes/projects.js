@@ -1,7 +1,10 @@
 const express = require('express');
 const prisma = require('../prismaClient');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
+
+router.use(requireAuth);
 
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -26,6 +29,33 @@ router.post('/', async (req, res) => {
       width,
       height,
       canvasData: canvasData ?? {},
+      userId: req.userId,
+    },
+  });
+
+  res.status(201).json(project);
+});
+
+router.post('/from-template/:templateId', async (req, res) => {
+  const template = await prisma.template.findFirst({
+    where: { id: req.params.templateId, isPublished: true },
+  });
+
+  if (!template) {
+    return res.status(404).json({ error: 'Template not found.' });
+  }
+
+  const { name } = req.body || {};
+
+  const project = await prisma.project.create({
+    data: {
+      name: typeof name === 'string' && name.trim() ? name.trim() : template.title,
+      width: template.width,
+      height: template.height,
+      canvasData: template.canvasData,
+      thumbnailUrl: template.thumbnailUrl,
+      userId: req.userId,
+      templateId: template.id,
     },
   });
 
@@ -34,12 +64,15 @@ router.post('/', async (req, res) => {
 
 router.get('/', async (req, res) => {
   const projects = await prisma.project.findMany({
+    where: { userId: req.userId },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
       name: true,
       width: true,
       height: true,
+      thumbnailUrl: true,
+      templateId: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -49,7 +82,9 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+  const project = await prisma.project.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+  });
 
   if (!project) {
     return res.status(404).json({ error: 'Project not found.' });
@@ -59,7 +94,7 @@ router.get('/:id', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const { name, width, height, canvasData } = req.body;
+  const { name, width, height, canvasData, thumbnailUrl } = req.body;
   const data = {};
 
   if (name !== undefined) {
@@ -86,31 +121,36 @@ router.put('/:id', async (req, res) => {
     }
     data.canvasData = canvasData;
   }
-
-  try {
-    const project = await prisma.project.update({
-      where: { id: req.params.id },
-      data,
-    });
-    res.json(project);
-  } catch (error) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Project not found.' });
+  if (thumbnailUrl !== undefined) {
+    if (typeof thumbnailUrl !== 'string') {
+      return res.status(400).json({ error: 'thumbnailUrl must be a string.' });
     }
-    throw error;
+    data.thumbnailUrl = thumbnailUrl;
   }
+
+  const existing = await prisma.project.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+    select: { id: true },
+  });
+  if (!existing) {
+    return res.status(404).json({ error: 'Project not found.' });
+  }
+
+  const project = await prisma.project.update({ where: { id: existing.id }, data });
+  res.json(project);
 });
 
 router.delete('/:id', async (req, res) => {
-  try {
-    await prisma.project.delete({ where: { id: req.params.id } });
-    res.status(204).end();
-  } catch (error) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Project not found.' });
-    }
-    throw error;
+  const existing = await prisma.project.findFirst({
+    where: { id: req.params.id, userId: req.userId },
+    select: { id: true },
+  });
+  if (!existing) {
+    return res.status(404).json({ error: 'Project not found.' });
   }
+
+  await prisma.project.delete({ where: { id: existing.id } });
+  res.status(204).end();
 });
 
 module.exports = router;
