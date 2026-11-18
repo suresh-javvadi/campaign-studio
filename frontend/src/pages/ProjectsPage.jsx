@@ -86,6 +86,11 @@ function ProjectsPage() {
               key={project.id}
               project={project}
               onDelete={setPendingDelete}
+              onRenamed={(updated) =>
+                setProjects((current) =>
+                  current.map((item) => (item.id === updated.id ? updated : item)),
+                )
+              }
             />
           ))}
         </div>

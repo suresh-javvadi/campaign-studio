@@ -14,7 +14,7 @@ function NavList({ items, onNavigate }) {
     <ul className="list-none m-0 p-0 flex flex-col gap-0.5">
       {items.map(({ path, label, icon: Icon }) => (
         <li key={path}>
-          <NavLink to={path} end={path === '/'} onClick={onNavigate} className={linkClasses}>
+          <NavLink to={path} end={path === '/app'} onClick={onNavigate} className={linkClasses}>
             {({ isActive }) => (
               <>
                 {isActive && (
